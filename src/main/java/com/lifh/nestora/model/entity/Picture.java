@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
-// TODO 增加图片访问量字段
+
 /**
  * 图片
  * @TableName picture
