@@ -151,6 +151,64 @@ public class OssUtil {
         this.deleteTempFile(file);
         return uploadPictureResult;
     }
+
+    /**
+     * 上传多个文件
+     * @param multipartFiles
+     * @return
+     * @throws IOException
+     */
+    public List<UploadPictureResult> uploadImages(@NonNull MultipartFile[] multipartFiles) throws IOException {
+        // 返回数组
+        List<UploadPictureResult> uploadPictureResults = new ArrayList<>();
+        for (MultipartFile multipartFile :multipartFiles){
+            // 生成文件名
+            String originalFilename = multipartFile.getOriginalFilename();   // 获取原文件名
+            String ext = "." + FileUtil.getSuffix(originalFilename);    // 获取文件后缀
+            String uuid = System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "");
+            String fileName = uuid + ext;
+            // 完整路径名
+            String date = new SimpleDateFormat("yyyy-MM-dd").format(new Date()).replace("-", "");
+            String filePathName = date + "/img/" + fileName;
+            try {
+                ossClient.putObject(
+                        OSS_BUCKET, // 仓库名
+                        filePathName,   // 文件名（含路径）
+                        multipartFile.getInputStream()   // 数据流
+                );
+            } catch (OSSException oe) {
+                log.error("OSS出错了:" + oe.getErrorMessage());
+                throw oe;
+            } catch (ClientException ce) {
+                log.error("OSS连接出错了:" + ce.getMessage());
+                throw ce;
+            }
+            // 创建一个临时文件
+            File file = File.createTempFile(multipartFile.getOriginalFilename(), null);
+            // multipartFile.transferTo(file);会删除其中的一个临时文件，导致后续存在问题
+            multipartFile.transferTo(file);
+            log.info(String.valueOf(file.length()));
+            BufferedImage image = null;
+            image = ImageIO.read(file);
+            // 获取图片的宽度和高度
+            int picWidth = image.getWidth();
+            int picHeight = image.getHeight();
+            double picScale = (double) picWidth / picHeight;
+            // 封装返回结果
+            UploadPictureResult uploadPictureResult = new UploadPictureResult();
+            uploadPictureResult.setUrl(OSS_BUCKET_URL + filePathName);
+            uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
+            uploadPictureResult.setPicSize(FileUtil.size((File) file));
+            uploadPictureResult.setPicWidth(picWidth);
+            uploadPictureResult.setPicHeight(picHeight);
+            uploadPictureResult.setPicScale(picScale);
+            uploadPictureResult.setPicFormat(ext);
+            this.deleteTempFile(file);
+            uploadPictureResults.add(uploadPictureResult);
+        }
+        return uploadPictureResults;
+    }
+
     /**
      * 往阿里云对象存储上传单个视频，简单上传
      * @param file 视频文件
