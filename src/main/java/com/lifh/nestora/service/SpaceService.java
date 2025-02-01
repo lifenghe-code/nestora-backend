@@ -2,13 +2,18 @@ package com.lifh.nestora.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.lifh.nestora.common.PageRequest;
+import com.lifh.nestora.model.dto.picture.PictureUploadRequest;
 import com.lifh.nestora.model.dto.space.SpaceAddRequest;
 import com.lifh.nestora.model.dto.space.SpaceQueryRequest;
 import com.lifh.nestora.model.entity.Space;
+import com.lifh.nestora.model.entity.User;
 import com.lifh.nestora.model.vo.PictureVO;
 import com.lifh.nestora.model.vo.SpaceVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * @author li_fe
@@ -44,10 +49,11 @@ public interface SpaceService {
     /**
      * 根据spaceId获取图片
      *
-     * @param pageRequest
-     * @param spaceId
+     * @param spaceQueryRequest
      * @param request
      * @return
      */
     IPage<PictureVO> getPictureBySpaceId(SpaceQueryRequest spaceQueryRequest, HttpServletRequest request);
+
+    SpaceVO uploadPrivatePicture(MultipartFile[] multipartFiles, Long spaceId, HttpServletRequest request) throws IOException;
 }

@@ -12,6 +12,8 @@ import com.lifh.nestora.exception.ErrorCode;
 import com.lifh.nestora.exception.ThrowUtils;
 import com.lifh.nestora.mapper.SpaceMapper;
 import com.lifh.nestora.common.PageRequest;
+import com.lifh.nestora.model.dto.file.UploadPictureResult;
+import com.lifh.nestora.model.dto.picture.PictureUploadRequest;
 import com.lifh.nestora.model.dto.space.SpaceAddRequest;
 import com.lifh.nestora.model.dto.space.SpaceQueryRequest;
 import com.lifh.nestora.model.entity.Picture;
@@ -24,11 +26,17 @@ import com.lifh.nestora.model.vo.UserVO;
 import com.lifh.nestora.service.PictureService;
 import com.lifh.nestora.service.SpaceService;
 import com.lifh.nestora.service.UserService;
+import com.lifh.nestora.utils.ImageCompressUtil;
+import com.lifh.nestora.utils.MultipartFileCopyUtil;
+import com.lifh.nestora.utils.OssUtil;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Objects;
+import java.io.IOException;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -44,7 +52,10 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
 
     @Resource
     PictureService pictureService;
-
+    @Resource
+    OssUtil ossUtil;
+    @Resource
+    ImageCompressUtil imageCompressUtil;
     public SpaceVO addSpace(SpaceAddRequest spaceAddRequest, HttpServletRequest request){
         // 首先检查是否登录
         User loginUser = userService.getLoginUser(request);
@@ -66,6 +77,8 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         BeanUtil.copyProperties(spaceAddRequest,space);
         space.setMaxCount(Objects.requireNonNull(SpaceTypeEnum.getEnumByValue(spaceLevel)).getMaxCount());
         space.setMaxSize(Objects.requireNonNull(SpaceTypeEnum.getEnumByValue(spaceLevel)).getMaxSize());
+        space.setTotalCount(space.getMaxCount());
+        space.setTotalSize(space.getMaxSize());
         boolean save = this.save(space);
         return getSpaceVO(space);
     }
@@ -93,8 +106,58 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Page<Picture> resultPage = pictureService.page(page, queryWrapper);
         return pictureService.getPictureVOPage(resultPage, request);
     }
+    @Transactional
+    @Override
+    public SpaceVO uploadPrivatePicture(MultipartFile[] multipartFiles, Long spaceId, HttpServletRequest request) throws IOException {
+        User loginUser = userService.getLoginUser(request);
+        List<PictureVO> pictureVOlist = new ArrayList<>();
+        ThrowUtils.throwIf(ObjectUtil.isNull(loginUser), ErrorCode.NOT_LOGIN_ERROR);
+        Space space = this.getById(spaceId);
+        // 剩余的数量和空间大小
+        Long totalCount = space.getTotalCount();
+        Long totalSize = space.getTotalSize();
+        // 首先判断空间是否足够
+        Long uploadCount = Arrays.stream(multipartFiles).count();
+        Long uploadSize = Arrays.stream(multipartFiles)
+                .filter(file -> !file.isEmpty()) // 过滤掉空文件
+                .mapToLong(MultipartFile::getSize) // 将文件映射为其大小
+                .sum()/1024; // 计算总和
+        if(!(totalCount > uploadCount && totalSize > uploadSize)){
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"空间不足");
+        }
+        MultipartFile[] multipartFiles1 = MultipartFileCopyUtil.deepCopyMultipartFiles(multipartFiles);
+        List<UploadPictureResult> uploadPictureResults = ossUtil.uploadImages(multipartFiles);
+        List<UploadPictureResult> uploadThumbnailResults = imageCompressUtil.uploadThumbnails(multipartFiles1);
+        Iterator<UploadPictureResult> iterator1 = uploadPictureResults.iterator();
+        Iterator<UploadPictureResult> iterator2 = uploadThumbnailResults.iterator();
+        List<Picture> pictures = new ArrayList<>();
+        while (iterator1.hasNext() && iterator2.hasNext()) {
+            UploadPictureResult uploadPictureResult = iterator1.next();
+            UploadPictureResult uploadThumbnailResult = iterator2.next();
+            // 构造要入库的图片信息
+            Picture picture = new Picture();
+            // 上传缩略图
+            // 上传图片
+            picture.setThumbnailUrl(uploadThumbnailResult.getUrl());
+            picture.setUrl(uploadPictureResult.getUrl());
+            picture.setName(uploadPictureResult.getPicName());
+            picture.setPicSize(uploadPictureResult.getPicSize());
+            picture.setPicWidth(uploadPictureResult.getPicWidth());
+            picture.setPicHeight(uploadPictureResult.getPicHeight());
+            picture.setPicScale(uploadPictureResult.getPicScale());
+            picture.setPicFormat(uploadPictureResult.getPicFormat());
+            picture.setUserId(loginUser.getId());
+            picture.setSpaceId(spaceId);
+            pictures.add(picture);
+        }
 
-
+        boolean result = pictureService.saveBatch(pictures);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败，数据库操作失败");
+        space.setTotalCount(totalCount - uploadCount);
+        space.setTotalSize(totalSize - uploadSize);
+        this.saveOrUpdate(space);
+        return getSpaceVO(space);
+    }
 
     @Override
     public SpaceVO getSpaceVO(Space space) {

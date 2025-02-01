@@ -13,12 +13,14 @@ import com.lifh.nestora.model.vo.PictureVO;
 import com.lifh.nestora.model.vo.SpaceVO;
 import com.lifh.nestora.service.SpaceService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -45,5 +47,10 @@ public class SpaceController {
 
         IPage<PictureVO> pictureBySpaceId = spaceService.getPictureBySpaceId(spaceQueryRequest, request);
         return ResultUtils.success(pictureBySpaceId);
+    }
+    @PostMapping("/upload-picture")
+    public BaseResponse<SpaceVO> uploadSpaceImage(@RequestParam("files") MultipartFile[] files, Long spaceId, HttpServletRequest request) throws IOException {
+        SpaceVO spaceVO = spaceService.uploadPrivatePicture(files, spaceId, request);
+        return ResultUtils.success(spaceVO);
     }
 }
