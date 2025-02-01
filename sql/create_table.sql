@@ -2,7 +2,7 @@
 create database if not exists yu_picture;
 
 -- 切换库
-use yu_picture;
+use nestora;
 
 -- 用户表
 create table if not exists user
@@ -86,6 +86,8 @@ create table if not exists space
     index idx_spaceLevel (spaceLevel) -- 提升按空间级别查询的效率
 ) comment '空间' collate = utf8mb4_unicode_ci;
 
+
+
 -- 添加新列
 ALTER TABLE picture
     ADD COLUMN spaceId bigint  null comment '空间 id（为空表示公共空间）';
@@ -96,3 +98,17 @@ CREATE INDEX idx_spaceId ON picture (spaceId);
 -- 添加新列
 ALTER TABLE picture
     ADD COLUMN picColor varchar(16) null comment '图片主色调';
+
+
+
+use nestora;
+CREATE TABLE shared_picture (
+                                id bigint auto_increment comment 'id' primary key,
+                                pictureName varchar(255) not null comment '图片名称', -- 文件名
+                                pictureUrl varchar(255) not null comment '分享链接', -- 文件存储路径
+                                encrypted tinyint default 0 not null comment '是否进行加密 0-不加密 1-加密' , -- 是否加密
+                                password varchar(255) not null comment '分享密码', -- 加密密码（加密存储）
+                                createTime datetime default  CURRENT_TIMESTAMP not null comment '创建时间', -- 创建时间
+                                expireTime datetime default  CURRENT_TIMESTAMP not null comment '失效', -- 失效时间
+                                isDelete   tinyint      default 0    not null comment '是否删除'
+);
