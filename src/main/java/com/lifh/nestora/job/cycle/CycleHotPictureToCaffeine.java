@@ -18,7 +18,7 @@ import javax.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Component
+//@Component
 @Slf4j
 public class CycleHotPictureToCaffeine {
     @Resource
@@ -29,7 +29,7 @@ public class CycleHotPictureToCaffeine {
      * 每5分钟执行一次
      */
     @Scheduled(fixedRate = 60 * 1000 )
-    // TODO 以下代码不执行
+
     public void run() {
         List<Picture> pictureList = pictureService.list();
         if (CollUtil.isEmpty(pictureList)) {

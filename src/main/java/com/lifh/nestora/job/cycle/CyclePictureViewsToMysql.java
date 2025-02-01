@@ -19,7 +19,7 @@ import java.util.List;
  * 将redis中的图片查看次数数据持久化到数据库中
  */
 
-@Component
+//@Component
 @Slf4j
 public class CyclePictureViewsToMysql {
     @Resource
