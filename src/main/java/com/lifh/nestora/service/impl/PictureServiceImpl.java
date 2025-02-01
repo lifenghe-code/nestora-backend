@@ -1,4 +1,5 @@
 package com.lifh.nestora.service.impl;
+import java.util.ArrayList;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
@@ -10,10 +11,13 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lifh.nestora.exception.ErrorCode;
 import com.lifh.nestora.exception.ThrowUtils;
 import com.lifh.nestora.mapper.PictureMapper;
+import com.lifh.nestora.mapper.SpaceMapper;
 import com.lifh.nestora.model.dto.file.UploadPictureResult;
 import com.lifh.nestora.model.dto.picture.PictureQueryRequest;
 import com.lifh.nestora.model.dto.picture.PictureUploadRequest;
+import com.lifh.nestora.model.entity.Space;
 import com.lifh.nestora.service.PictureService;
+import com.lifh.nestora.service.SpaceService;
 import com.lifh.nestora.utils.ImageCompressUtil;
 import com.lifh.nestora.model.entity.Picture;
 import com.lifh.nestora.model.entity.User;
@@ -40,6 +44,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
     ImageCompressUtil imageCompressUtil;
     @Resource
     UserService userService;
+
+    @Resource
+    SpaceMapper spaceMapper;
     @Resource
     CacheManager cacheManager;
     @Override
@@ -107,6 +114,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture> impl
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败，数据库操作失败");
         return PictureVO.objToVo(picture);
     }
+
+
 
     @Override
     public PictureVO getPictureVO(Picture picture, HttpServletRequest request) {

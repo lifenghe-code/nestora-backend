@@ -96,12 +96,6 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
 
-    @PostMapping("/upload-private-images")
-    public BaseResponse<PictureVO> uploadImages(@RequestParam("files") MultipartFile[] files) {
-        List<String> filePaths = new ArrayList<>();
-
-        return null;
-    }
 
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest
