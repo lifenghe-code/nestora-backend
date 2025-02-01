@@ -5,12 +5,21 @@ import com.lifh.nestora.exception.ThrowUtils;
 import com.lifh.nestora.model.dto.file.UploadPictureResult;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
+import org.apache.tomcat.util.http.fileupload.disk.DiskFileItem;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.commons.CommonsMultipartFile;
 
 import javax.annotation.Resource;
+import javax.servlet.http.Part;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -54,6 +63,40 @@ public class ImageCompressUtil {
             throw new RuntimeException(e);
         }
 
+    }
+
+
+    public List<UploadPictureResult> uploadThumbnails(MultipartFile[] files) {
+        //TODO BUG：file文件传递进来时，产生的临时文件不匹配
+        List<UploadPictureResult> uploadPictureResults = new ArrayList<>();
+
+        for (MultipartFile file:files) {
+            //得到上传时的原文件名
+            String originalFilename = file.getOriginalFilename();
+            //获取文件格式
+            ThrowUtils.throwIf(originalFilename == null, ErrorCode.PARAMS_ERROR);
+            String ext = originalFilename.substring(originalFilename.lastIndexOf(".")+1 );
+            //获取uuid作为文件名
+            String name = UUID.randomUUID().toString().replaceAll("-", "");
+            // 先尝试压缩并保存图片
+            try {
+                
+                File tempFile = File.createTempFile("thumbnail-" + name, ".jpeg");
+                // 在程序结束时删除临时文件
+                tempFile.deleteOnExit();
+                Thumbnails.of(file.getInputStream())
+                        .scale(0.6f)
+                        .outputQuality(0.6f)
+                        .outputFormat("jpeg")
+                        .toFile(tempFile);  // Save the file with the specified name
+                UploadPictureResult uploadPictureResult = ossUtil.uploadImage(tempFile);
+                uploadPictureResults.add(uploadPictureResult);
+            } catch (IOException  e) {
+                throw new RuntimeException(e);
+            }
+
+        }
+        return uploadPictureResults;
     }
 
 }
